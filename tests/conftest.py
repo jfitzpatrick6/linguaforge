@@ -20,14 +20,14 @@ test_engine = create_async_engine(
 
 @pytest.fixture(scope="session")
 async def test_db():
-    """Create a fresh in-memory test database for each test session"""
+    """Create fresh in-memory test database"""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
-    async with AsyncSession(test_engine) as session:
+    async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
     
-    # Cleanup after tests
+    # Optional cleanup
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
