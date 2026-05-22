@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from app.core.database import Base   # Use the single Base
+from app.core.database import Base
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
@@ -17,8 +17,8 @@ class UserProfile(Base):
     target_language = Column(String, nullable=False)
     
     current_cefr = Column(String, default="A1")
-    interests = Column(String, nullable=True)      # Store as JSON string
-    goals = Column(String, nullable=True)          # Store as JSON string
+    interests = Column(String, nullable=True)      # JSON string
+    goals = Column(String, nullable=True)          # JSON string
     
     onboarding_completed = Column(Boolean, default=False)
     timezone = Column(String, default="UTC")
