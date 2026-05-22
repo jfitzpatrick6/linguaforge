@@ -56,3 +56,9 @@ async def test_db():
 # Override dependency: use test_db as the database session
 app.dependency_overrides[get_db] = lambda: test_db()
 
+
+import pytest
+from httpx import AsyncClient
+
+@pytest.fixture
+async def test_client():

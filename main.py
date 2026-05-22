@@ -40,3 +40,4 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy", "model": settings.AI_MODEL}
+
