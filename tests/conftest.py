@@ -11,12 +11,13 @@ from app.core.database import Base
 from main import app
 from httpx import AsyncClient
 
-# === IMPORTANT: Import all models so they register with Base.metadata ===
+# FORCE MODEL REGISTRATION
 from app.models.profile import UserProfile
 from app.models.skill import UserSkill
-# Add more models here as you create them
 
-# Test database engine
+print("DEBUG: Registered tables ->", list(Base.metadata.tables.keys()))  # Should show tables now
+
+# Test database engine (in-memory)
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
     connect_args={"check_same_thread": False},
@@ -25,15 +26,14 @@ test_engine = create_async_engine(
 
 @pytest.fixture(scope="function")
 async def test_db():
-    """Function-scoped test database with all tables created"""
-    # Create all tables from registered models
+    """Create tables before each test"""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
     async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
     
-    # Cleanup after each test
+    # Cleanup after test
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 

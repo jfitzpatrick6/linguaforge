@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.models.base import Base, TimestampedBase
+from app.models.base import Base, TimestampedBase   # Important: use this Base
 from pydantic import BaseModel, ConfigDict
 
 
