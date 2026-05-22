@@ -18,7 +18,7 @@ class UserProfile(TimestampedBase):
 
 
 # Pydantic schemas
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
 
@@ -29,6 +29,7 @@ class UserProfileCreate(BaseModel):
 
 
 class UserProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     language_preference: str
