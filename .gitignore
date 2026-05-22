@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Data and databases
+data/
+*.db
+*.sqlite
+chroma/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test artifacts
+.pytest_cache/
