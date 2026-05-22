@@ -1,8 +1,14 @@
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pathlib import Path
 
+# Add project root to Python path
+root_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(root_dir))
+
+# Now import from the app package
 from app.core.database import engine, get_db, Base
+from app.core.config import settings
 
 import asyncio
 import os
@@ -12,8 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from linguaforge.app.core.database import engine, get_db, Base
-from linguaforge.main import app
+from app.main import app
 
 # Use in-memory SQLite for testing
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
