@@ -27,7 +27,7 @@ async def test_db():
     async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
     
-    # Optional cleanup
+    # Cleanup
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
