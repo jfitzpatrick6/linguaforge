@@ -15,8 +15,8 @@ async def lifespan(app: FastAPI):
     await database.close_db()
 
 app = FastAPI(
-    title="LinguaForge AI Learning Platform",
-    description="FastAPI backend for multilingual language learning with PDF ingestion, grading, and agent orchestration.",
+    title="LinguaForge",
+    description="Local-first AI Language Learning Tool",
     version="0.1.0",
     lifespan=lifespan
 )
@@ -36,6 +36,10 @@ app.include_router(api_router, prefix="/api")
 @app.get("/")
 async def root():
     return {"message": "Welcome to LinguaForge!"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "model": settings.AI_MODEL}
 
 if __name__ == "__main__":
     import uvicorn
