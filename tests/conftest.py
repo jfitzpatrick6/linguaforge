@@ -11,9 +11,10 @@ from app.core.database import Base
 from main import app
 from httpx import AsyncClient
 
-# Import all models so they register with Base.metadata
+# === IMPORTANT: Import all models so they register with Base.metadata ===
 from app.models.profile import UserProfile
 from app.models.skill import UserSkill
+# Add more models here as you create them
 
 # Test database engine
 test_engine = create_async_engine(
@@ -24,15 +25,15 @@ test_engine = create_async_engine(
 
 @pytest.fixture(scope="function")
 async def test_db():
-    """Function-scoped test database with tables created"""
-    # Create all tables
+    """Function-scoped test database with all tables created"""
+    # Create all tables from registered models
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
     async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
     
-    # Cleanup after test
+    # Cleanup after each test
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
