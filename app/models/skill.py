@@ -16,8 +16,7 @@ class Skill(Base):
     description = Column(String, nullable=True)
     prerequisites = Column(String, nullable=True)
 
-    user_skills = relationship("UserSkill", back_populates="skill")
-
+    user_skills = relationship("UserSkill", back_populates="skill", cascade="all, delete-orphan")
 
 class UserSkill(Base):
     """Per-user skill mastery"""

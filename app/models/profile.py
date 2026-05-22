@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
@@ -25,6 +26,9 @@ class UserProfile(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserProfileCreate(BaseModel):
