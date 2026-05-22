@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.main import app
+from main import app
 
 # Use in-memory SQLite for testing
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
@@ -53,5 +53,6 @@ async def test_db():
         yield session
 
 
-# Override dependencies for testing
-app.dependency_overrides[get_db] = get_db
+# Override dependency: use test_db as the database session
+app.dependency_overrides[get_db] = lambda: test_db()
+
