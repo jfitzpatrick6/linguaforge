@@ -1,10 +1,10 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from app.core.database import Base   # ← Use this Base only
+from app.core.database import Base   # Use the single Base
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
-class UserProfile(TimestampedBase):
+class UserProfile(Base):
     """Main user profile model"""
     __tablename__ = "user_profiles"
 
@@ -17,11 +17,14 @@ class UserProfile(TimestampedBase):
     target_language = Column(String, nullable=False)
     
     current_cefr = Column(String, default="A1")
-    interests = Column(String, nullable=True)          # JSON string
-    goals = Column(String, nullable=True)              # JSON string
+    interests = Column(String, nullable=True)      # Store as JSON string
+    goals = Column(String, nullable=True)          # Store as JSON string
     
     onboarding_completed = Column(Boolean, default=False)
     timezone = Column(String, default="UTC")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class UserProfileCreate(BaseModel):
@@ -35,7 +38,6 @@ class UserProfileCreate(BaseModel):
 
 
 class UserProfileRead(BaseModel):
-    """Fixed Pydantic v2 config"""
     model_config = ConfigDict(from_attributes=True)
     
     id: int
@@ -50,7 +52,3 @@ class UserProfileRead(BaseModel):
     onboarding_completed: bool
     created_at: datetime | None
     updated_at: datetime | None
-
-
-# Relationship back to UserSkill
-UserProfile.user_skills = relationship("UserSkill", back_populates="user")

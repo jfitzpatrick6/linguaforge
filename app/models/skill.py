@@ -19,7 +19,7 @@ class Skill(Base):
     user_skills = relationship("UserSkill", back_populates="skill")
 
 
-class UserSkill(TimestampedBase):
+class UserSkill(Base):
     """Per-user mastery tracking"""
     __tablename__ = "user_skills"
 
