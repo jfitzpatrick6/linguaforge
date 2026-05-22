@@ -11,7 +11,10 @@ from app.core.database import Base
 from main import app
 from httpx import AsyncClient
 
-# Test database engine (in-memory)
+# Configure pytest-asyncio
+pytest_plugins = ("pytest_asyncio",)
+
+# In-memory test database engine
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
     connect_args={"check_same_thread": False},
@@ -20,7 +23,7 @@ test_engine = create_async_engine(
 
 @pytest.fixture(scope="session")
 async def test_db():
-    """Create fresh in-memory test database"""
+    """Session-scoped test database"""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
