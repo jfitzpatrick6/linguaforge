@@ -9,3 +9,9 @@ pymupdf
 openai
 python-multipart
 tiktoken
+
+# Development dependencies
+pytest
+pytest-asyncio
+httpx
+sqlalchemy-utils
