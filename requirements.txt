@@ -11,6 +11,7 @@ python-multipart
 tiktoken
 
 # Development dependencies
+aiosqlite
 pytest
 pytest-asyncio
 httpx
