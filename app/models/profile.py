@@ -1,49 +1,57 @@
-from sqlalchemy import Column, String, Integer, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.models.base import Base, TimestampedBase
+from pydantic import BaseModel, ConfigDict
 
-from app.models.base import TimestampedBase
 
-
-# SQLAlchemy model
 class UserProfile(TimestampedBase):
+    """Main user profile model"""
     __tablename__ = "user_profiles"
 
-    name = Column(String(100), nullable=False)
-    language_preference = Column(String(10), nullable=False)
-    level = Column(String(10), nullable=False, default="A1")
-    is_active = Column(Boolean, default=True)
-
-    # Relationships
-    user_skills = relationship("UserSkill", back_populates="profile", cascade="all, delete-orphan")
-
-
-# Pydantic schemas
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True, index=True, nullable=False)
+    
+    name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    native_language = Column(String, nullable=False, default="en")
+    target_language = Column(String, nullable=False)
+    
+    current_cefr = Column(String, default="A1")
+    interests = Column(String, nullable=True)          # JSON string
+    goals = Column(String, nullable=True)              # JSON string
+    
+    onboarding_completed = Column(Boolean, default=False)
+    timezone = Column(String, default="UTC")
 
 
 class UserProfileCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    language_preference: str = Field(..., min_length=2, max_length=10)
-    level: Optional[str] = Field("A1", min_length=2, max_length=10)
+    user_id: str
+    name: str | None = None
+    email: str | None = None
+    native_language: str = "en"
+    target_language: str
+    interests: list[str] = []
+    goals: list[str] = []
 
 
 class UserProfileRead(BaseModel):
+    """Fixed Pydantic v2 config"""
     model_config = ConfigDict(from_attributes=True)
+    
     id: int
-    name: str
-    language_preference: str
-    level: str
-    created_at: datetime
-    updated_at: datetime
-    is_active: bool
+    user_id: str
+    name: str | None
+    email: str | None
+    native_language: str
+    target_language: str
+    current_cefr: str
+    interests: str | None
+    goals: str | None
+    onboarding_completed: bool
+    created_at: datetime | None
+    updated_at: datetime | None
 
-    class Config:
-        from_attributes = True
 
-
-class UserProfileUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    language_preference: Optional[str] = Field(None, min_length=2, max_length=10)
-    level: Optional[str] = Field(None, min_length=2, max_length=10)
-    is_active: Optional[bool] = None
+# Relationship back to UserSkill
+UserProfile.user_skills = relationship("UserSkill", back_populates="user")
