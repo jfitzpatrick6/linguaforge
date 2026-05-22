@@ -11,31 +11,34 @@ from app.core.database import Base
 from main import app
 from httpx import AsyncClient
 
-# Force proper asyncio mode
-pytest_plugins = ["pytest_asyncio"]
+# Import all models so they register with Base.metadata
+from app.models.profile import UserProfile
+from app.models.skill import UserSkill
 
-# In-memory test database
+# Test database engine
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
 
-@pytest.fixture(scope="function")   # Changed from session to function
+@pytest.fixture(scope="function")
 async def test_db():
-    """Function-scoped test database - more reliable with pytest-asyncio"""
+    """Function-scoped test database with tables created"""
+    # Create all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
     async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
     
-    # Cleanup after each test
+    # Cleanup after test
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture
 async def test_client():
+    """FastAPI test client"""
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
