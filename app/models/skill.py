@@ -1,47 +1,58 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.models.base import Base, TimestampedBase
 
-from app.models.base import TimestampedBase
 
-
-class Skill(TimestampedBase):
+class Skill(Base):
+    """Static CEFR-based skills (pre-populated by admin)"""
     __tablename__ = "skills"
 
-    cefr_level = Column(String(10), nullable=False)
-    category = Column(String(50), nullable=False)
-    description = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
+    id = Column(Integer, primary_key=True, index=True)
+    skill_id = Column(String, unique=True, index=True, nullable=False)  # e.g. "grammar_past_subjunctive"
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)  # grammar, vocab, listening, speaking, etc.
+    cefr_level = Column(String, nullable=False)  # A1, A2, B1, etc.
+    description = Column(String, nullable=True)
+    prerequisites = Column(String, nullable=True)  # JSON string of skill_ids or comma separated
 
-    # Index on skill_id and cefr_level
-    __table_args__ = (
-        {'sqlite_autoincrement': True},
-    )
-
-    # Relationships
-    user_skills = relationship("UserSkill", back_populates="skill", cascade="all, delete-orphan")
+    # Relationship to user progress
+    user_skills = relationship("UserSkill", back_populates="skill")
 
 
 class UserSkill(TimestampedBase):
+    """Per-user mastery tracking"""
     __tablename__ = "user_skills"
 
+    id = Column(Integer, primary_key=True, index=True)
+    
+    user_id = Column(Integer, ForeignKey("user_profiles.id"), nullable=False, index=True)
     skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False, index=True)
-    mastery_level = Column(Integer, nullable=False, default=1)
-    last_practiced = Column(DateTime, nullable=True)
-    is_completed = Column(Boolean, default=False)
-
-    # Index on user_id and skill_id
-    __table_args__ = (
-        {'sqlite_autoincrement': True},
-    )
+    
+    mastery = Column(Float, default=0.0)           # 0.0 to 1.0
+    evidence_count = Column(Integer, default=0)
+    last_attempt = Column(DateTime, default=datetime.utcnow)
+    
+    # Optional: last error types or notes
+    notes = Column(String, nullable=True)
 
     # Relationships
-    profile_id = Column(Integer, ForeignKey("user_profiles.id"), nullable=False)
-    profile = relationship("UserProfile", back_populates="user_skills")
     skill = relationship("Skill", back_populates="user_skills")
+    user = relationship("UserProfile", back_populates="user_skills")
 
-    # Composite unique constraint
-    __table_args__ = (
-        {'sqlite_autoincrement': True},
-        # Ensure one skill per user
-        (UniqueConstraint('profile_id', 'skill_id', name='uq_user_skill')),  # Add this line
+
+# Optional: Helper for creating base skills
+def create_base_skill(
+    skill_id: str,
+    name: str,
+    category: str,
+    cefr_level: str,
+    description: str = ""
+) -> Skill:
+    return Skill(
+        skill_id=skill_id,
+        name=name,
+        category=category,
+        cefr_level=cefr_level,
+        description=description
     )

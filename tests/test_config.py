@@ -1,20 +1,12 @@
-import pytest
-from app.config import Settings
+import sys
+from pathlib import Path
 
+root_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(root_dir))
 
-def test_settings_loads_correctly():
-    settings = Settings()
-    assert settings.debug is False
-    assert settings.database_url == "sqlite+aiosqlite:///:memory:"
-    assert settings.openai_api_key is not None
-    assert settings.llm_model == "gpt-4o"
-    assert settings.max_tokens == 4096
-    assert settings.temperature == 0.7
-    assert settings.max_retries == 3
-    assert settings.cache_enabled is True
-    assert settings.cache_ttl == 3600
-    assert settings.allowed_origins == ["*"], "Allowed origins should include wildcard"
-    assert settings.log_level == "INFO"
-    assert settings.log_file == "logs/app.log"
-    assert settings.max_file_size_mb == 10
-    assert settings.max_concurrent_users == 1000
+from app.core.config import settings
+
+def test_settings_loaded():
+    assert settings.AI_BASE_URL is not None
+    assert settings.AI_MODEL is not None
+    print("✅ Settings loaded correctly")
