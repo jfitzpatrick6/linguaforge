@@ -4,26 +4,25 @@ from typing import AsyncGenerator
 
 from app.core.config import settings
 
-# Database URL (can be configured via env)
-DATABASE_URL = "sqlite:///./app.db"
+# Ensure data directory exists
+os.makedirs("data", exist_ok=True)
 
-# Create engine
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Database URL for SQLite with async support
+DATABASE_URL = f"sqlite+aiosqlite:///{settings.DB_PATH}"
+# Create async engine
+engine = create_async_engine(DATABASE_URL, echo=False)
+# Async session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
-# Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Base class for models
+class Base(DeclarativeBase):
+    pass
 
-
-def init_db():
-    """Initialize the database (create tables)."""
-    from app.models import Base
-    Base.metadata.create_all(bind=engine)
-
-
-def get_db() -> Generator:
-    """Dependency injection for database sessions."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db() -> AsyncGenerator:
+    """Dependency for FastAPI to get DB session"""
+    async with AsyncSessionLocal() as session:
+        yield session
