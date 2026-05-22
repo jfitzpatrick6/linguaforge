@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.models.base import Base, TimestampedBase   # Important: use this Base
+from app.core.database import Base   # ← Use this Base only
 from pydantic import BaseModel, ConfigDict
+from datetime import datetime
 
 
 class UserProfile(TimestampedBase):

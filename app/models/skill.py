@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.models.base import Base, TimestampedBase   # Important: use this Base
-
+from app.core.database import Base
 
 class Skill(Base):
     """Static CEFR-based skills (pre-populated by admin)"""
