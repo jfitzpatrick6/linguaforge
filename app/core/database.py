@@ -1,7 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from typing import AsyncGenerator
-
+import os
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 # Ensure data directory exists
@@ -26,3 +25,4 @@ async def get_db() -> AsyncGenerator:
     """Dependency for FastAPI to get DB session"""
     async with AsyncSessionLocal() as session:
         yield session
+
