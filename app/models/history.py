@@ -1,24 +1,21 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, JSON, DateTime
+from app.core.database import Base
+from datetime import datetime
 
-from app.models.base import TimestampedBase
+# Use the main Base from datetime import datetime
 
 
-class SessionLog(TimestampedBase):
+class SessionLog(Base):
+    """Log of learning sessions (lessons, quizzes, voice chats, etc.)"""
     __tablename__ = "session_logs"
 
-    session_id = Column(String(50), nullable=False, index=True)
-    activity_type = Column(String(50), nullable=False)
-    duration_seconds = Column(Integer, nullable=False)
-    content_type = Column(String(50), nullable=True)
-    content_id = Column(Integer, nullable=True)
-    feedback = Column(Text, nullable=True)
-    metadata = Column(Text, nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, nullable=False, index=True)
 
-    # Index on user_id and session_id
-    __table_args__ = (
-        {'sqlite_autoincrement': True},
-    )
+    session_type = Column(String, nullable=False)  # "lesson", "quiz", "voice_chat", "assessment"
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    duration_minutes = Column(Integer, default=0)
 
-    # Relationships
-    # No back_populates needed - immutable log
+    data = Column(JSON, nullable=True)  # Flexible JSON field for session details
+    summary = Column(String, nullable=True)
+
