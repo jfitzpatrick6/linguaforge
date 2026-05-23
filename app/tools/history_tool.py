@@ -1,31 +1,45 @@
-from sqlalchemy.orm import Session
-from app.models import LearningSession
-from app.exceptions import ToolError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.history import SessionLog
+from app.tools.base_tool import BaseTool, ToolError
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 
 
-class HistoryTool:
-    """Manage user learning session history."""
+class HistoryTool(BaseTool):
+    """Tool for logging user activity (lessons, quizzes, conversations)"""
 
-    def __init__(self, db: Session):
-        self.db = db
-
-    def log_session(self, user_id: int, duration: int, topics: List[str]) -> LearningSession:
-        """Log a new learning session."""
-        session = LearningSession(
+    async def log_session(self, user_id: str, session_type: str,
+                          data: dict, duration_minutes: int = 0) -> SessionLog:
+        """Log a learning session"""
+        log = SessionLog(
             user_id=user_id,
-            duration=duration,
-            topics=topics,
+            session_type=session_type,  # "lesson", "quiz", "voice_chat", etc.
+            data=data,                  # JSON-able dict with details
+            duration_minutes=duration_minutes,
             timestamp=datetime.utcnow()
         )
-        self.db.add(session)
-        self.db.commit()
-        self.db.refresh(session)
-        return session
+        self.db.add(log)
+        await self.safe_commit()
+        await self.db.refresh(log)
+        return log
 
-    def get_recent_sessions(self, user_id: int, limit: int = 10) -> List[LearningSession]:
-        """Retrieve the most recent learning sessions."""
-        return self.db.query(LearningSession).filter(
-            LearningSession.user_id == user_id
-        ).order_by(LearningSession.timestamp.desc()).limit(limit).all()
+    async def get_recent_sessions(self, user_id: str, limit: int = 10) -> List[Dict]:
+        """Get recent activity for a user"""
+        result = await self.db.execute(
+            select(SessionLog)
+            .where(SessionLog.user_id == user_id)
+            .order_by(SessionLog.timestamp.desc())
+            .limit(limit)
+        )
+        logs = result.scalars().all()
+        return [
+            {
+                "id": log.id,
+                "session_type": log.session_type,
+                "timestamp": log.timestamp,
+                "duration_minutes": log.duration_minutes,
+                "summary": log.data.get("summary", "") if isinstance(log.data, dict) else ""
+            }
+            for log in logs
+        ]
