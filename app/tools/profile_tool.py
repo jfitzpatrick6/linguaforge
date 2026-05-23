@@ -15,7 +15,7 @@ class ProfileTool(BaseTool):
         profile = result.scalar_one_or_none()
 
         if profile:
-        return profile
+            return profile
 
         # Create new profile
         profile_data = data or {}
@@ -55,3 +55,4 @@ class ProfileTool(BaseTool):
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
         return result.scalar_one_or_none()
+
