@@ -1,42 +1,57 @@
-from sqlalchemy.orm import Session
-from app.models import Profile
-from app.exceptions import ToolError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.profile import UserProfile, UserProfileCreate
+from app.tools.base_tool import BaseTool, ToolError
 
 
-class ProfileTool:
-    """CRUD operations for user profiles."""
+class ProfileTool(BaseTool):
+    """Tool for user profile operations"""
 
-    def __init__(self, db: Session):
-        self.db = db
+    async def get_or_create_profile(self, user_id: str, data: dict = None) -> UserProfile:
+        """Get existing profile or create new one"""
+        result = await self.db.execute(
+            select(UserProfile).where(UserProfile.user_id == user_id)
+        )
+        profile = result.scalar_one_or_none()
 
-    def create_profile(self, user_id: int, name: str) -> Profile:
-        """Create a new profile."""
-        profile = Profile(user_id=user_id, name=name)
+        if profile:
+        return profile
+
+        # Create new profile
+        profile_data = data or {}
+        profile = UserProfile(
+            user_id=user_id,
+            name=profile_data.get("name"),
+            target_language=profile_data.get("target_language", "es"),
+            native_language=profile_data.get("native_language", "en"),
+            current_cefr="A1",
+            onboarding_completed=False
+        )
+
         self.db.add(profile)
-        self.db.commit()
-        self.db.refresh(profile)
+        await self.safe_commit()
+        await self.db.refresh(profile)
         return profile
 
-    def get_profile(self, user_id: int) -> Profile | None:
-        """Retrieve a profile by user ID."""
-        return self.db.query(Profile).filter(Profile.user_id == user_id).first()
-
-    def update_profile(self, user_id: int, **kwargs) -> Profile:
-        """Update a profile with given fields."""
-        profile = self.get_profile(user_id)
+    async def update_profile(self, user_id: str, updates: dict) -> UserProfile:
+        """Update existing profile"""
+        result = await self.db.execute(
+            select(UserProfile).where(UserProfile.user_id == user_id)
+        )
+        profile = result.scalar_one_or_none()
         if not profile:
-            raise ToolError(f"Profile with user_id {user_id} not found")
-        for key, value in kwargs.items():
-            setattr(profile, key, value)
-        self.db.commit()
-        self.db.refresh(profile)
+            raise ToolError("PROFILE_NOT_FOUND", f"No profile found for user {user_id}")
+
+        for key, value in updates.items():
+            if hasattr(profile, key):
+                setattr(profile, key, value)
+        await self.safe_commit()
+        await self.db.refresh(profile)
         return profile
 
-    def delete_profile(self, user_id: int) -> bool:
-        """Delete a profile."""
-        profile = self.get_profile(user_id)
-        if not profile:
-            return False
-        self.db.delete(profile)
-        self.db.commit()
-        return True
+    async def get_profile(self, user_id: str) -> UserProfile | None:
+        """Get profile by user_id"""
+        result = await self.db.execute(
+            select(UserProfile).where(UserProfile.user_id == user_id)
+        )
+        return result.scalar_one_or_none()
