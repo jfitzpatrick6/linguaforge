@@ -1,6 +1,9 @@
 import pytest
 from app.tools.profile_tool import ProfileTool
+from app.tools.history_tool import HistoryTool
 from app.models.profile import UserProfile
+from app.models.history import SessionLog
+from datetime import datetime
 
 
 # ====================== ProfileTool Tests ======================
@@ -159,3 +162,4 @@ async def test_get_recent_sessions_limit(test_db):
     # Verify they're in descending order by timestamp
     assert sessions[0]["session_type"] == "lesson_4"
     assert sessions[2]["session_type"] == "lesson_2"
+
