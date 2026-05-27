@@ -1,6 +1,8 @@
 from typing import List, Dict, Any
 from openai import OpenAI
 
+from app.core.llm import get_llm_client, get_model_name
+
 SYSTEM_PROMPT = """
 You are a reviewer agent responsible for analyzing tool usage and identifying errors.
 
@@ -17,17 +19,30 @@ Your task is to:
 Provide clear, actionable advice. Use minimal, precise language. Avoid over-explaining.
 """
 
-def review_tool_usage(client: OpenAI, tool_calls: List[Dict[str, Any]], error: str = None, context: str = "") -> str:
-    """Analyze tool usage and suggest remediation."""
-    prompt = f"Context: {context}\n\nTool Calls: {tool_calls}" 
+def review_tool_usage(
+    client: OpenAI | None = None,
+    tool_calls: List[Dict[str, Any]] = None,
+    error: str = None,
+    context: str = "",
+) -> str:
+    """Analyze tool usage and suggest remediation.
+
+    If client is not provided, a properly configured local client is obtained
+    automatically via the central LLM factory.
+    """
+    if client is None:
+        client = get_llm_client()
+    tool_calls = tool_calls or []
+
+    prompt = f"Context: {context}\n\nTool Calls: {tool_calls}"
     if error:
         prompt += f"\n\nError: {error}"
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=get_model_name(),
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
         ]
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""

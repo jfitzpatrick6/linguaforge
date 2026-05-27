@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from app.models.skill import Skill, UserSkill
 from app.tools.base_tool import BaseTool, ToolError
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict
 
 
@@ -47,9 +47,10 @@ class SkillTool(BaseTool):
             # Update existing
             user_skill.mastery = (user_skill.mastery * user_skill.evidence_count + score) / (user_skill.evidence_count + 1)
             user_skill.evidence_count += 1
-            user_skill.last_attempt = datetime.utcnow()
+            user_skill.last_attempt = datetime.now(timezone.utc)
             if evidence:
                 user_skill.notes = evidence
+            await self.safe_commit()
         else:
             # Create new
             user_skill = UserSkill(
@@ -57,7 +58,7 @@ class SkillTool(BaseTool):
                 skill_id=skill_id,
                 mastery=score,
                 evidence_count=1,
-                last_attempt=datetime.utcnow(),
+                last_attempt=datetime.now(timezone.utc),
                 notes=evidence
             )
             self.db.add(user_skill)

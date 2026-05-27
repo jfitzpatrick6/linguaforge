@@ -14,6 +14,7 @@ from httpx import AsyncClient
 # Force registration of all models
 from app.models.profile import UserProfile
 from app.models.skill import UserSkill
+from app.models.curriculum import CurriculumBlock
 
 # Test database
 test_engine = create_async_engine(

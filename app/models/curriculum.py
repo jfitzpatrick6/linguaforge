@@ -1,34 +1,45 @@
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 
-from app.models.base import TimestampedBase
+from app.core.database import Base
 
 
-class CurriculumBlock(TimestampedBase):
+class CurriculumBlock(Base):
+    """
+    A learning block for a user.
+
+    Hybrid model (Option B):
+    - Some blocks are seeded (core CEFR progression topics)
+    - Most remedial or advancement blocks are created dynamically by the CurriculumAgent
+
+    Lessons themselves are not stored in a dedicated table for MVP.
+    Generated lesson content lives in SessionLog + is produced on-demand via RAG.
+    """
     __tablename__ = "curriculum_blocks"
 
-    title = Column(String(100), nullable=False)
-    description = Column(String(500), nullable=False)
-    order_index = Column(Integer, nullable=False, default=0)
-    is_active = Column(Boolean, default=True)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("user_profiles.user_id"), nullable=False, index=True)
 
-    # Relationships
-    lessons = relationship("LessonReference", back_populates="block", cascade="all, delete-orphan")
+    title = Column(String(160), nullable=False)
+    description = Column(Text, nullable=True)
 
+    cefr_level = Column(String(8), nullable=False, default="A1")  # A1, A2, B1, ...
+    status = Column(String(32), nullable=False, default="active")  # active, completed, paused, archived
+    source = Column(String(32), nullable=False, default="seed")    # seed | agent_remedial | agent_advancement
 
-class LessonReference(TimestampedBase):
-    __tablename__ = "lesson_references"
-
-    title = Column(String(100), nullable=False)
-    url = Column(String(500), nullable=False)
-    external_id = Column(String(100), nullable=True)
+    # Ordering within the user's personal curriculum path
     order_index = Column(Integer, nullable=False, default=0)
 
-    # Indexes
-    __table_args__ = (
-        {'sqlite_autoincrement': True},
-    )
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
 
-    # Relationships
-    block_id = Column(Integer, ForeignKey("curriculum_blocks.id"), nullable=False, index=True)
-    block = relationship("CurriculumBlock", back_populates="lessons")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # Optional: which static skills this block primarily targets (comma-separated ids for MVP simplicity)
+    # In a later iteration we can introduce a proper association table.
+    targeted_skill_ids = Column(String, nullable=True)
+
+    # Relationship back to the owning profile (optional but useful)
+    # user = relationship("UserProfile", back_populates=...)  # can be added when UserProfile is extended

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 
 
@@ -29,7 +29,7 @@ class UserSkill(Base):
     
     mastery = Column(Float, default=0.0)
     evidence_count = Column(Integer, default=0)
-    last_attempt = Column(DateTime, default=datetime.utcnow)
+    last_attempt = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     notes = Column(String, nullable=True)
 
     # Relationships

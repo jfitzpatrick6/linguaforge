@@ -3,7 +3,7 @@ from app.tools.profile_tool import ProfileTool
 from app.tools.history_tool import HistoryTool
 from app.models.profile import UserProfile
 from app.models.history import SessionLog
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ====================== ProfileTool Tests ======================
@@ -125,7 +125,7 @@ async def test_get_recent_sessions_with_data(test_db):
         session_type="quiz",
         data={"quiz_id": "456", "score": 85},
         duration_minutes=15,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     test_db.add(log)
     await test_db.commit()
@@ -151,7 +151,7 @@ async def test_get_recent_sessions_limit(test_db):
             session_type=f"lesson_{i}",
             data={"lesson_id": str(i)},
             duration_minutes=i * 5,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         test_db.add(log)
     await test_db.commit()
@@ -162,4 +162,96 @@ async def test_get_recent_sessions_limit(test_db):
     # Verify they're in descending order by timestamp
     assert sessions[0]["session_type"] == "lesson_4"
     assert sessions[2]["session_type"] == "lesson_2"
+
+
+# ====================== SkillTool Tests ======================
+from app.tools.skill_tool import SkillTool
+from app.models.skill import UserSkill
+
+
+@pytest.mark.asyncio
+async def test_update_mastery_new_skill(test_db):
+    tool = SkillTool(test_db)
+    user_id = "skill_user_1"
+
+    us = await tool.update_mastery(user_id, skill_id=42, score=0.75, evidence="First quiz 75%")
+
+    assert us.mastery == 0.75
+    assert us.evidence_count == 1
+    assert us.skill_id == 42
+
+
+@pytest.mark.asyncio
+async def test_update_mastery_evidence_weighted(test_db):
+    tool = SkillTool(test_db)
+    user_id = "skill_user_2"
+
+    # First score
+    await tool.update_mastery(user_id, skill_id=7, score=0.6)
+    # Second score — should be averaged
+    us = await tool.update_mastery(user_id, skill_id=7, score=0.9)
+
+    # (0.6*1 + 0.9) / 2 = 0.75
+    assert round(us.mastery, 2) == 0.75
+    assert us.evidence_count == 2
+
+
+@pytest.mark.asyncio
+async def test_update_mastery_rejects_invalid_score(test_db):
+    tool = SkillTool(test_db)
+    with pytest.raises(Exception):  # ToolError
+        await tool.update_mastery("u", skill_id=1, score=1.5)
+
+
+@pytest.mark.asyncio
+async def test_get_weak_skills(test_db):
+    tool = SkillTool(test_db)
+    user_id = "weak_user"
+
+    await tool.update_mastery(user_id, 1, 0.3)
+    await tool.update_mastery(user_id, 2, 0.8)
+    await tool.update_mastery(user_id, 3, 0.4)
+
+    weak = await tool.get_weak_skills(user_id, threshold=0.5)
+    assert len(weak) == 2
+    assert weak[0]["mastery"] == 0.3
+
+
+@pytest.mark.asyncio
+async def test_get_skill_tree(test_db):
+    tool = SkillTool(test_db)
+    user_id = "tree_user"
+
+    await tool.update_mastery(user_id, 10, 0.5)
+    await tool.update_mastery(user_id, 11, 1.0)
+
+    tree = await tool.get_skill_tree(user_id)
+    assert tree["total_skills"] == 2
+    assert round(tree["average_mastery"], 2) == 0.75
+
+
+# ====================== Curriculum Model + Tool (Skeleton) Tests ======================
+from app.tools.curriculum_tool import CurriculumTool
+
+
+@pytest.mark.asyncio
+async def test_curriculum_block_crud_via_tool(test_db):
+    tool = CurriculumTool(test_db)
+    user_id = "curric_user_1"
+
+    block = await tool.create_block(
+        user_id=user_id,
+        title="A1 Greetings",
+        cefr_level="A1",
+        description="Basic greetings and introductions",
+        source="seed",
+    )
+
+    assert block.id is not None
+    assert block.status == "active"
+    assert block.user_id == user_id
+
+    active = await tool.get_active_block(user_id)
+    assert active is not None
+    assert active.id == block.id
 

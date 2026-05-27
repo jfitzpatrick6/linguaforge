@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.history import SessionLog
 from app.tools.base_tool import BaseTool, ToolError
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict
 
 
@@ -17,7 +17,7 @@ class HistoryTool(BaseTool):
             session_type=session_type,  # "lesson", "quiz", "voice_chat", etc.
             data=data,                  # JSON-able dict with details
             duration_minutes=duration_minutes,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         self.db.add(log)
         await self.safe_commit()

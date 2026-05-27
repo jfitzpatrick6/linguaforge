@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class UserProfile(Base):
@@ -24,8 +24,8 @@ class UserProfile(Base):
     onboarding_completed = Column(Boolean, default=False)
     timezone = Column(String, default="UTC")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationship
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")

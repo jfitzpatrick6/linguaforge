@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from openai import OpenAI
 
+from app.core.llm import get_llm_client, get_model_name
+
 SYSTEM_PROMPT = """
 You are a lesson generator agent that creates personalized learning content based on user skill level and grounding RAG.
 
@@ -21,13 +23,25 @@ Your task is to:
 Ensure the tone is supportive and pedagogical. Avoid jargon unless defined.
 """
 
-def generate_lesson(client: OpenAI, skill_level: str, topic: str, rag_context: str) -> str:
-    """Generate a personalized lesson based on skill level and RAG context."""
+def generate_lesson(
+    client: OpenAI | None = None,
+    skill_level: str = "beginner",
+    topic: str = "",
+    rag_context: str = "",
+) -> str:
+    """Generate a personalized lesson based on skill level and RAG context.
+
+    If client is not provided, a properly configured local client is obtained
+    automatically via the central LLM factory.
+    """
+    if client is None:
+        client = get_llm_client()
+
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=get_model_name(),
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Skill Level: {skill_level}\nTopic: {topic}\nRAG Context: {rag_context}"}
         ]
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""
