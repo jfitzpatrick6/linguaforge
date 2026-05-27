@@ -12,6 +12,9 @@ Make sure the FastAPI backend is running on the same machine.
 import gradio as gr
 import requests
 from typing import Optional, Dict, Any, List
+from pathlib import Path
+
+from app.services.pdf_grounding import get_pdf_grounding_service
 
 # --------------------------- Configuration --------------------------- #
 
@@ -323,6 +326,110 @@ def create_app():
                     fn=log_and_get_reflection,
                     inputs=[user_id, api_base],
                     outputs=[observation_md, status_box]
+                )
+
+            # === Tab 5: Admin - PDF Ingestion (RAG Seeding) ===
+            with gr.Tab("⚙️ Admin - Seed Languages (RAG)"):
+                gr.Markdown("""
+                ### Admin: Ingest PDFs for RAG Grounding
+
+                Upload CEFR or reference PDFs for a language. These files will be used by the Lesson Generator.
+
+                **Warning:** This is an admin area. Only upload trusted PDFs.
+                """)
+
+                with gr.Row():
+                    admin_lang = gr.Dropdown(
+                        ["es", "fr", "de", "it", "pt", "ja", "other"],
+                        value="es",
+                        label="Language Code",
+                        allow_custom_value=True
+                    )
+                    admin_source_name = gr.Textbox(
+                        label="Source Name (optional)",
+                        placeholder="CEFR A1 Grammar Notes"
+                    )
+
+                uploaded_files = gr.File(
+                    label="Upload PDF(s)",
+                    file_types=[".pdf"],
+                    file_count="multiple"
+                )
+
+                ingest_btn = gr.Button("📥 Ingest PDFs into RAG", variant="primary")
+
+                ingest_result = gr.JSON(label="Ingestion Result")
+
+                def do_ingest_pdfs(lang_code: str, source_name: str, files):
+                    if not files:
+                        return {"error": "No files uploaded"}
+
+                    service = get_pdf_grounding_service()
+                    results = []
+
+                    for file in files:
+                        try:
+                            file_path = file.name if hasattr(file, "name") else str(file)
+                            result = service.ingest_language_pdf(
+                                lang_code=lang_code.lower(),
+                                pdf_path=file_path,
+                                source_name=source_name or None
+                            )
+                            results.append(result)
+                        except Exception as e:
+                            results.append({"file": getattr(file, 'name', str(file)), "error": str(e)})
+
+                    return {
+                        "total_chunks": sum(r.get("chunks_ingested", 0) for r in results if isinstance(r, dict)),
+                        "files_processed": len([r for r in results if "error" not in r]),
+                        "details": results
+                    }
+
+                ingest_btn.click(
+                    fn=do_ingest_pdfs,
+                    inputs=[admin_lang, admin_source_name, uploaded_files],
+                    outputs=[ingest_result]
+                )
+
+                gr.Markdown("---")
+
+                with gr.Row():
+                    list_langs_btn = gr.Button("🔄 List Ingested Languages")
+                    delete_lang = gr.Textbox(label="Language to Delete", placeholder="es")
+
+                current_languages = gr.JSON(label="Currently Ingested Languages")
+
+                def list_ingested_languages():
+                    service = get_pdf_grounding_service()
+                    langs = service.list_languages()
+                    details = {}
+                    for lang in langs:
+                        info = service.get_collection_info(lang)
+                        details[lang] = info
+                    return details
+
+                list_langs_btn.click(
+                    fn=list_ingested_languages,
+                    outputs=[current_languages]
+                )
+
+                delete_btn = gr.Button("🗑️ Delete Language Collection", variant="stop")
+
+                def delete_language_collection(lang_code: str):
+                    if not lang_code:
+                        return {"error": "Please provide a language code"}
+                    service = get_pdf_grounding_service()
+                    success = service.delete_language_collection(lang_code)
+                    return {
+                        "deleted": lang_code,
+                        "success": success,
+                        "remaining_languages": service.list_languages()
+                    }
+
+                delete_btn.click(
+                    fn=delete_language_collection,
+                    inputs=[delete_lang],
+                    outputs=[current_languages]
                 )
 
     return demo

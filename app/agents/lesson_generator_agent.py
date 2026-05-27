@@ -74,7 +74,22 @@ class LessonGeneratorAgent:
         """
         # 1. Retrieve relevant grounding context
         hits = self.grounding.query_grounding(language, topic, k=k)
-        rag_context = "\n\n---\n\n".join(h["text"] for h in hits) if hits else "No specific reference material found."
+
+        formatted_chunks = []
+        for h in hits:
+            meta = h.get("metadata", {})
+            heading = meta.get("heading")
+            page = meta.get("page")
+
+            prefix = ""
+            if heading:
+                prefix += f"[{heading}] "
+            if page:
+                prefix += f"(p.{page}) "
+
+            formatted_chunks.append(f"{prefix}{h['text']}")
+
+        rag_context = "\n\n---\n\n".join(formatted_chunks) if formatted_chunks else "No specific reference material found."
 
         # 2. Build the user prompt
         user_prompt = f"""Target Language: {language}

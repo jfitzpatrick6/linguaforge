@@ -37,6 +37,61 @@ def _clean_text(text: str) -> str:
     return text.strip()
 
 
+def _extract_structured_blocks(page: fitz.Page) -> List[Dict[str, Any]]:
+    """
+    Extract text blocks from a page while trying to identify headings.
+
+    Uses fitz's dict output for richer structure than plain text.
+    """
+    blocks = []
+    page_dict = page.get_text("dict")
+
+    current_heading = None
+
+    for block in page_dict.get("blocks", []):
+        if "lines" not in block:
+            continue  # Skip images / non-text blocks
+
+        block_text = ""
+        max_font_size = 0
+        is_bold = False
+
+        for line in block["lines"]:
+            line_text = "".join([span["text"] for span in line["spans"]])
+            block_text += line_text + " "
+
+            for span in line["spans"]:
+                size = span.get("size", 0)
+                if size > max_font_size:
+                    max_font_size = size
+                    is_bold = "bold" in span.get("font", "").lower() or span.get("flags", 0) & 16 != 0
+
+        block_text = _clean_text(block_text)
+
+        if not block_text:
+            continue
+
+        # Simple heuristic for headings
+        is_likely_heading = (
+            max_font_size > 12 and
+            (len(block_text) < 120) and
+            (is_bold or max_font_size > 14)
+        )
+
+        if is_likely_heading:
+            current_heading = block_text.strip()
+
+        blocks.append({
+            "text": block_text.strip(),
+            "bbox": block.get("bbox"),
+            "is_heading": is_likely_heading,
+            "heading": current_heading,
+            "font_size": max_font_size,
+        })
+
+    return blocks
+
+
 def _chunk_text(
     text: str,
     chunk_size: int = 450,
@@ -83,7 +138,8 @@ def _chunk_text(
             for i in range(0, len(chunk), chunk_size - overlap):
                 final_chunks.append(chunk[i : i + chunk_size])
 
-    return [c.strip() for c in final_chunks if len(c.strip()) > 30]
+    # Final quality filter
+    return [c.strip() for c in final_chunks if len(c.strip()) > 25]
 
 
 class PDFGrounding:
@@ -164,8 +220,25 @@ class PDFGrounding:
         added_ids: List[str] = []
 
         for page_num, page in enumerate(doc, start=1):
-            raw_text = page.get_text("text")
-            cleaned = _clean_text(raw_text)
+            structured_blocks = _extract_structured_blocks(page)
+
+            # Group blocks into logical sections based on headings
+            page_text_with_context = []
+            current_section = None
+
+            for block in structured_blocks:
+                if block["is_heading"]:
+                    current_section = block["text"]
+
+                text = block["text"]
+                if current_section and not block["is_heading"]:
+                    text = f"[{current_section}] {text}"
+
+                page_text_with_context.append(text)
+
+            full_page_text = "\n\n".join(page_text_with_context)
+            cleaned = _clean_text(full_page_text)
+
             if not cleaned:
                 continue
 
@@ -174,12 +247,20 @@ class PDFGrounding:
             for idx, chunk in enumerate(chunks):
                 chunk_id = f"{lang_code}:{pdf_file.stem}:p{page_num}:c{idx}"
 
+                # Try to extract the most relevant heading for this chunk
+                chunk_heading = None
+                for block in structured_blocks:
+                    if block["heading"] and block["heading"] in chunk:
+                        chunk_heading = block["heading"]
+                        break
+
                 metadata = {
                     "lang": lang_code.lower(),
                     "source": source_label,
                     "source_path": str(pdf_file),
                     "page": page_num,
                     "chunk_index": idx,
+                    "heading": chunk_heading,
                 }
 
                 collection.add(
@@ -192,12 +273,17 @@ class PDFGrounding:
 
         doc.close()
 
+        headings_detected = 0
+        if 'structured_blocks' in locals():
+            headings_detected = len([b for b in structured_blocks if b.get("is_heading")])
+
         return {
             "lang": lang_code,
             "source": source_label,
             "pages": page_count,
             "chunks_ingested": total_chunks,
             "collection": collection.name,
+            "headings_detected": headings_detected,
         }
 
     # ------------------------------------------------------------------ #
@@ -276,6 +362,61 @@ class PDFGrounding:
             if col.name.startswith("grounding_"):
                 langs.append(col.name.replace("grounding_", ""))
         return sorted(langs)
+
+    def ingest_pdfs_from_directory(
+        self,
+        lang_code: str,
+        directory: str,
+        *,
+        source_prefix: Optional[str] = None,
+        reset_collection: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Ingest all PDFs in a directory for a given language.
+
+        Useful for bulk-seeding a language with many reference materials.
+        """
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
+            raise NotADirectoryError(f"Not a directory: {directory}")
+
+        pdf_files = sorted(dir_path.glob("*.pdf"))
+        if not pdf_files:
+            return {
+                "lang": lang_code,
+                "directory": str(dir_path),
+                "pdfs_found": 0,
+                "total_chunks": 0,
+            }
+
+        total_chunks = 0
+        results = []
+
+        for pdf_file in pdf_files:
+            source_name = f"{source_prefix}: {pdf_file.name}" if source_prefix else pdf_file.name
+            try:
+                result = self.ingest_language_pdf(
+                    lang_code=lang_code,
+                    pdf_path=str(pdf_file),
+                    source_name=source_name,
+                    reset_collection=reset_collection if pdf_file == pdf_files[0] else False,
+                )
+                total_chunks += result.get("chunks_ingested", 0)
+                results.append(result)
+            except Exception as e:
+                results.append({
+                    "source": pdf_file.name,
+                    "error": str(e)
+                })
+
+        return {
+            "lang": lang_code,
+            "directory": str(dir_path),
+            "pdfs_found": len(pdf_files),
+            "pdfs_processed": len([r for r in results if "error" not in r]),
+            "total_chunks_ingested": total_chunks,
+            "details": results,
+        }
 
 
 # Default global instance (configured from settings)
