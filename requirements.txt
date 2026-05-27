@@ -7,6 +7,7 @@ python-dotenv
 chromadb
 pymupdf
 openai
+sentence-transformers
 python-multipart
 tiktoken
 
@@ -16,3 +17,6 @@ pytest
 pytest-asyncio
 httpx
 sqlalchemy-utils
+
+# Frontend (Gradio for quick MVP UI)
+gradio>=4.0

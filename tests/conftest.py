@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from main import app
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
-# Force registration of all models
+# Force registration of all models for test DB
 from app.models.profile import UserProfile
-from app.models.skill import UserSkill
+from app.models.skill import UserSkill, Skill
+from app.models.history import SessionLog
 from app.models.curriculum import CurriculumBlock
 
 # Test database
@@ -37,5 +38,6 @@ async def test_db():
 
 @pytest.fixture
 async def test_client():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

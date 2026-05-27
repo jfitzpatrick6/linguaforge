@@ -2,13 +2,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.core.config import settings
 
-# Routers (currently stub implementations — real endpoints added in Phase 4)
+# Routers
 from app.routers import (
     profile_router,
     lesson_router,
     curriculum_router,
     chat_router,
 )
+
+# Dependencies are defined in app/dependencies.py and used via Depends() in routers
+# from app.dependencies import ...  (imported inside routers)
 
 
 @asynccontextmanager

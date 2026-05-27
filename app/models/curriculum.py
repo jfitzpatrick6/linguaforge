@@ -21,6 +21,9 @@ class CurriculumBlock(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("user_profiles.user_id"), nullable=False, index=True)
 
+    # The target language this block belongs to (used for RAG grounding selection)
+    language = Column(String(16), nullable=False, default="es")
+
     title = Column(String(160), nullable=False)
     description = Column(Text, nullable=True)
 
